@@ -16,9 +16,10 @@ scalaVersion := "2.10.2"
 
 sbtVersion := "0.13.0"
 
-scalacOptions += "-deprecation"
-
-scalacOptions += "-target:jvm-1.7"
+scalacOptions ++= Seq(
+  "-deprecation",
+  "-target:jvm-1.7"
+)
 
 publishTo := Some(Resolver.file("file", new File(Path.userHome.absolutePath + "/.m2/repository")))
 
