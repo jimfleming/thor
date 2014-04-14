@@ -1,7 +1,7 @@
 package com.rdio.thor
 
-import java.awt.{AlphaComposite, Color, Graphics2D, RenderingHints, LinearGradientPaint, MultipleGradientPaint}
-import java.awt.geom.{RoundRectangle2D, AffineTransform, Point2D}
+import java.awt.{Font, FontMetrics, AlphaComposite, Color, Graphics2D, RenderingHints, LinearGradientPaint, MultipleGradientPaint}
+import java.awt.geom.{RoundRectangle2D, AffineTransform, Point2D, Rectangle2D}
 import java.awt.image.BufferedImage
 
 import com.sksamuel.scrimage.{BufferedOpFilter, Filter, Image, ScaleMethod}
@@ -44,6 +44,28 @@ class LinearGradientFilter(angle: Float, colors: Array[Color], stops: Array[Floa
 object LinearGradientFilter {
   def apply(angle: Float, colors: Array[Color], stops: Array[Float]): Filter =
     new LinearGradientFilter(angle, colors, stops)
+}
+
+/** Draws the string of a given font in the center of the image */
+class TextFilter(text: String, font: Font, color: Color) extends Filter {
+  def apply(image: Image) {
+    val g2 = image.awt.getGraphics.asInstanceOf[Graphics2D]
+    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+    g2.setFont(font)
+    g2.setColor(color)
+
+    val metrics: FontMetrics = g2.getFontMetrics
+    val bounds = metrics.getStringBounds(text, g2)
+
+    val x: Int = (image.width - bounds.getWidth.toInt) / 2
+    val y: Int = (image.height + metrics.getLeading + metrics.getAscent - metrics.getDescent) / 2
+
+    g2.drawString(text, x, y)
+  }
+}
+
+object TextFilter {
+  def apply(text: String, font: Font, color: Color): Filter = new TextFilter(text, font, color)
 }
 
 /** Blends between two images using a mask */

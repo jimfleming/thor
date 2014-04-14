@@ -1,6 +1,6 @@
 package com.rdio.thor
 
-import java.awt.Color
+import java.awt.{Color, Font, GraphicsEnvironment}
 
 import scala.math
 import scala.util.parsing.combinator._
@@ -22,6 +22,7 @@ case class ColorizeNode(color: Color) extends FilterNode
 case class ScaleNode(percentage: Float) extends FilterNode
 case class ZoomNode(percentage: Float) extends FilterNode
 case class ScaleToNode(width: Int, height: Int) extends FilterNode
+case class TextNode(text: String, font: Font, color: Color) extends FilterNode
 case class GridNode(paths: List[ImageNode]) extends FilterNode
 case class PadNode(padding: Int) extends FilterNode
 case class ConstrainNode(constraints: List[String]) extends FilterNode
@@ -33,7 +34,7 @@ case class CoverNode(width: Int, height: Int) extends FilterNode
 
 case class LayerNode(path: ImageNode, filter: FilterNode)
 
-class LayerParser(width: Int, height: Int) extends RegexParsers {
+class LayerParser(width: Int, height: Int) extends JavaTokenParsers {
 
   // number - matches an integer or floating point number
   def number: Parser[Float] = """\d+(\.\d+)?""".r ^^ (_.toFloat)
@@ -62,6 +63,39 @@ class LayerParser(width: Int, height: Int) extends RegexParsers {
   // empty - matches an empty image placeholder
   def empty: Parser[EmptyNode] = "_" ^^ {
     case _ => EmptyNode()
+  }
+
+  def fontStyle: Parser[Int] = """bold|italic|normal""".r ^^ {
+    case "normal" => 0
+    case "bold" => 1
+    case "italic" => 2
+  }
+
+  def fontStyles: Parser[Int] = rep1(fontStyle) ^^ { styles =>
+    // Sum the styles to a maximum of 3
+    math.min(styles.reduceLeft((styles, style) => styles + style), 3)
+  }
+
+  def string: Parser[String] = stringLiteral ^^ { string =>
+    string.stripPrefix("\"").stripSuffix("\"")
+  }
+
+  // font - matches a font
+  def font: Parser[Font] = (fontStyles?) ~ (pixels?) ~ string ^^ {
+    case maybeStyle ~ maybeSize ~ family => {
+      val style: Int = maybeStyle.getOrElse(Font.PLAIN)
+      val size: Int = maybeSize.getOrElse(12)
+
+      val ge: GraphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment()
+      val fontFamilies: Array[String] = ge.getAvailableFontFamilyNames()
+      if (fontFamilies.contains(family)) {
+        new Font(family, style, size)
+      } else {
+        val resourceStream = getClass.getResourceAsStream(s"${family.toLowerCase}.ttf")
+        val font: Font = Font.createFont(Font.TRUETYPE_FONT, resourceStream)
+        font.deriveFont(style, size)
+      }
+    }
   }
 
   // placeholder - matches an image placeholder
@@ -174,6 +208,11 @@ class LayerParser(width: Int, height: Int) extends RegexParsers {
     case paths => GridNode(paths)
   }
 
+  // text filter
+  def text: Parser[TextNode] = "text(" ~> string ~ "," ~ font ~ "," ~ color <~ ")" ^^ {
+    case text ~ _ ~ font ~ _ ~ color => TextNode(text, font, color)
+  }
+
   // round filter
   def round: Parser[RoundCornersNode] = "round(" ~> pixels <~ ")" ^^ {
     case radius => RoundCornersNode(radius)
@@ -209,7 +248,7 @@ class LayerParser(width: Int, height: Int) extends RegexParsers {
   }
 
   // all filters
-  def filters: Parser[FilterNode] = linear | boxblur | blur | scaleto | zoom | scale | grid | round | mask | colorize | overlay | composite | constrain | pad
+  def filters: Parser[FilterNode] = text | linear | boxblur | blur | scaleto | zoom | scale | grid | round | mask | colorize | overlay | composite | constrain | pad
 
   // layer - matches a single layer
   def layer: Parser[LayerNode] =

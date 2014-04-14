@@ -59,6 +59,8 @@ class ImageService(conf: Config) extends BaseImageService(conf) {
         }
       }
 
+      case TextNode(text, font, color) => Some(image.filter(TextFilter(text, font, color)))
+
       case ColorizeNode(color) => Some(image.filter(ColorizeFilter(color)))
 
       case ZoomNode(percentage) => {
