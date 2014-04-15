@@ -7,13 +7,13 @@ import scala.util.parsing.combinator._
 
 case class ColorStop(color: Color, stop: Float)
 
-sealed trait ImageNode{}
+trait ImageNode{}
 case class EmptyNode() extends ImageNode
 case class PathNode(path: String) extends ImageNode
 case class IndexNode(index: Int) extends ImageNode
 case class PreviousNode() extends ImageNode
 
-sealed trait FilterNode{}
+trait FilterNode{}
 case class NoopNode() extends FilterNode
 case class LinearGradientNode(degrees: Float, colors: List[Color], stops: List[Float]) extends FilterNode
 case class BlurNode() extends FilterNode
