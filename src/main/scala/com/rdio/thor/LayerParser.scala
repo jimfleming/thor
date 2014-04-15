@@ -18,6 +18,7 @@ case class NoopNode() extends FilterNode
 case class LinearGradientNode(degrees: Float, colors: List[Color], stops: List[Float]) extends FilterNode
 case class BlurNode() extends FilterNode
 case class BoxBlurNode(hRadius: Int, vRadius: Int) extends FilterNode
+case class BoxBlurPercentNode(hRadius: Float, vRadius: Float) extends FilterNode
 case class ColorizeNode(color: Color) extends FilterNode
 case class ScaleNode(percentage: Float) extends FilterNode
 case class ZoomNode(percentage: Float) extends FilterNode
@@ -25,9 +26,11 @@ case class ScaleToNode(width: Int, height: Int) extends FilterNode
 case class TextNode(text: String, font: Font, color: Color) extends FilterNode
 case class GridNode(paths: List[ImageNode]) extends FilterNode
 case class PadNode(padding: Int) extends FilterNode
+case class PadPercentNode(padding: Float) extends FilterNode
 case class ConstrainNode(constraints: List[String]) extends FilterNode
 case class CompositeNode(image: ImageNode, composites: List[String]) extends FilterNode
 case class RoundCornersNode(radius: Int) extends FilterNode
+case class RoundCornersPercentNode(radius: Float) extends FilterNode
 case class OverlayNode(overlay: ImageNode) extends FilterNode
 case class MaskNode(overlay: ImageNode, mask: ImageNode) extends FilterNode
 case class CoverNode(width: Int, height: Int) extends FilterNode
@@ -172,10 +175,10 @@ class LayerParser(width: Int, height: Int) extends JavaTokenParsers {
   // box blur filter
   def boxblur: Parser[BoxBlurNode] = "boxblur(" ~> pixels ~ "," ~ pixels <~ ")" ^^ {
     case hRadius ~ _ ~ vRadius => BoxBlurNode(hRadius, vRadius)
-  } | "boxblur(" ~> percent ~ "," ~ percent <~ ")" ^^ {
-    case hPercent ~ _ ~ vPercent => {
-      BoxBlurNode((hPercent * width.toFloat).toInt, (vPercent * height.toFloat).toInt)
-    }
+  }
+
+  def boxblurpercent: Parser[BoxBlurPercentNode] = "boxblur(" ~> percent ~ "," ~ percent <~ ")" ^^ {
+    case hPercent ~ _ ~ vPercent => BoxBlurPercentNode(hPercent, vPercent)
   }
 
   // colorize filter
@@ -216,8 +219,10 @@ class LayerParser(width: Int, height: Int) extends JavaTokenParsers {
   // round filter
   def round: Parser[RoundCornersNode] = "round(" ~> pixels <~ ")" ^^ {
     case radius => RoundCornersNode(radius)
-  } | "round(" ~> percent <~ ")" ^^ {
-    case percent => RoundCornersNode((percent * math.max(width, height).toFloat).toInt)
+  }
+
+  def roundpercent: Parser[RoundCornersPercentNode] = "round(" ~> percent <~ ")" ^^ {
+    case percent => RoundCornersPercentNode(percent)
   }
 
   // mask filter
@@ -233,8 +238,10 @@ class LayerParser(width: Int, height: Int) extends JavaTokenParsers {
   // pad filter
   def pad: Parser[PadNode] = "pad(" ~> pixels <~ ")" ^^ {
     case padding => PadNode(padding)
-  } | "pad(" ~> percent <~ ")" ^^ {
-    case percent => PadNode((percent * math.max(width, height).toFloat).toInt)
+  }
+
+  def padpercent: Parser[PadPercentNode] = "pad(" ~> percent <~ ")" ^^ {
+    case percent => PadPercentNode(percent)
   }
 
   // composite filter
@@ -248,7 +255,11 @@ class LayerParser(width: Int, height: Int) extends JavaTokenParsers {
   }
 
   // all filters
-  def filters: Parser[FilterNode] = text | linear | boxblur | blur | scaleto | zoom | scale | grid | round | mask | colorize | overlay | composite | constrain | pad
+  def filters: Parser[FilterNode] =
+    text | linear | boxblur | boxblurpercent | 
+    blur | scaleto | zoom | scale | grid |
+    round | roundpercent | mask | colorize | overlay |
+    composite | constrain | pad | padpercent
 
   // layer - matches a single layer
   def layer: Parser[LayerNode] =

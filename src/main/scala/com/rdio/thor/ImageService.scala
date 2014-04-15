@@ -59,6 +59,23 @@ class ImageService(conf: Config) extends BaseImageService(conf) {
         }
       }
 
+      case BoxBlurPercentNode(hPercent, vPercent) => {
+        val originalWidth = image.width
+        val originalHeight = image.height
+        val hRadius = (hPercent * originalWidth.toFloat).toInt
+        val vRadius = (vPercent * originalHeight.toFloat).toInt
+        val downsampleFactor = 2
+        val downsampling = 1.0f / downsampleFactor
+        val downsampledHRadius: Int = math.round(hRadius * downsampling)
+        val downsampledVRadius: Int = math.round(vRadius * downsampling)
+
+        Some {
+          image.scale(downsampling).filter(BoxBlurFilter(downsampledHRadius, downsampledVRadius))
+            .trim(1, 1, 1, 1) // Remove bleeded edges
+            .scaleTo(originalWidth, originalHeight, ScaleMethod.Bicubic) // Scale up a bit to account for trim
+        }
+      }
+
       case TextNode(text, font, color) => Some(image.filter(TextFilter(text, font, color)))
 
       case ColorizeNode(color) => Some(image.filter(ColorizeFilter(color)))
@@ -82,6 +99,11 @@ class ImageService(conf: Config) extends BaseImageService(conf) {
 
       case PadNode(padding) => Some(image.pad(padding, new Color(0, 0, 0, 0)))
 
+      case PadPercentNode(percent) => {
+        val padding = (percent * math.max(image.width, image.height).toFloat).toInt
+        Some(image.pad(padding, new Color(0, 0, 0, 0)))
+      }
+
       case GridNode(paths) => {
         val images: List[Image] = paths.flatMap {
           path => tryGetImage(path, imageMap, completedLayers, width, height)
@@ -99,6 +121,11 @@ class ImageService(conf: Config) extends BaseImageService(conf) {
       }
 
       case RoundCornersNode(radius) => Some(image.filter(RoundCornersFilter(radius)))
+
+      case RoundCornersPercentNode(percent) => {
+        val radius = (percent * math.max(image.width, image.height).toFloat).toInt
+        Some(image.filter(RoundCornersFilter(radius)))
+      }
 
       case CoverNode(width, height) => Some(image.cover(width, height, ScaleMethod.Bicubic))
 
@@ -175,6 +202,11 @@ class ImageService(conf: Config) extends BaseImageService(conf) {
         // Restrict compression to the range 0-100
         val compression: Int = math.min(math.max(req.params.getIntOrElse("c", 98), 0), 100)
 
+        val format: Format[ImageWriter] = req.params.get("f") match {
+          case Some("png") => Format.PNG.asInstanceOf[Format[ImageWriter]]
+          case _ => Format.JPEG.asInstanceOf[Format[ImageWriter]]
+        }
+
         val parser = parserFactory(width, height)
 
         // Parse the layers and attempt to handle each layer
@@ -203,21 +235,6 @@ class ImageService(conf: Config) extends BaseImageService(conf) {
                 // Apply any filters to each image and return the final image
                 applyLayerFilters(imageMap, layers, width, height) match {
                   case Some(image) => {
-                    // Look for occurences of rounded corners
-                    val containsTranslucentFilters: Boolean = layers.exists {
-                      case LayerNode(_, filter) => filter match {
-                        case _: RoundCornersNode => true
-                        case _ => false
-                      }
-                    }
-
-                    // Switch to PNG if we used rounded corners
-                    val format: Format[ImageWriter] = if (containsTranslucentFilters) {
-                      Format.PNG.asInstanceOf[Format[ImageWriter]]
-                    } else {
-                      Format.JPEG.asInstanceOf[Format[ImageWriter]]
-                    }
-
                     // Apply final resize and build response
                     buildResponse(req, image.scaleTo(width, height, ScaleMethod.Bicubic), format, compression)
                   }
