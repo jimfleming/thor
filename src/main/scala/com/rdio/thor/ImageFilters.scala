@@ -57,8 +57,16 @@ class TextFilter(text: String, font: Font, color: Color) extends Filter {
     val metrics: FontMetrics = g2.getFontMetrics
     val bounds = metrics.getStringBounds(text, g2)
 
-    val x: Int = (image.width - bounds.getWidth.toInt) / 2
-    val y: Int = (image.height + metrics.getLeading + metrics.getAscent - metrics.getDescent) / 2
+    val width = bounds.getWidth.toInt
+
+    val x: Int = (image.width - width) / 2
+
+    // Subtract descent because its rendered from baseline while we want to
+    // center from ascent height.
+
+    // We use "height - descent" instead of "leading + ascent" due to float
+    // rounding errors.
+    val y: Int = (image.height + bounds.getHeight.toInt - metrics.getDescent) / 2
 
     g2.drawString(text, x, y)
   }
