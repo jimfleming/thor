@@ -93,10 +93,6 @@ class ImageService(conf: Config) extends BaseImageService(conf) {
 
       case ScaleToNode(width, height) => Some(image.scaleTo(width, height, ScaleMethod.Bicubic))
 
-      case ConstrainNode(constraints) => None
-
-      case CompositeNode(path, composites) => None
-
       case PadNode(padding) => Some(image.pad(padding, new Color(0, 0, 0, 0)))
 
       case PadPercentNode(percent) => {
