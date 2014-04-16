@@ -27,8 +27,6 @@ case class TextNode(text: String, font: Font, color: Color) extends FilterNode
 case class GridNode(paths: List[ImageNode]) extends FilterNode
 case class PadNode(padding: Int) extends FilterNode
 case class PadPercentNode(padding: Float) extends FilterNode
-case class ConstrainNode(constraints: List[String]) extends FilterNode
-case class CompositeNode(image: ImageNode, composites: List[String]) extends FilterNode
 case class RoundCornersNode(radius: Int) extends FilterNode
 case class RoundCornersPercentNode(radius: Float) extends FilterNode
 case class OverlayNode(overlay: ImageNode) extends FilterNode
@@ -140,16 +138,6 @@ class LayerParser(width: Int, height: Int) extends JavaTokenParsers {
     case color ~ number => ColorStop(color, number)
   }
 
-  // composites unit
-  def composites: Parser[String] =
-    "average" | "blue" | "color" | "colorburn" | "colordodge" | "diff" | "green" |
-    "grow" | "hue" | "hard" | "heat" | "lighten" | "negation" | "luminosity" |
-    "multiply" | "negation" | "normal" | "overlay" | "red" | "reflect" | "saturation" |
-    "screen" | "subtract"
-
-  // constraints unit
-  def constraints: Parser[String] = "left" | "right" | "top" | "bottom"
-
   // linear gradient filter
   def linear: Parser[LinearGradientNode] = "linear(" ~> degrees ~ "," ~ rep1sep(colorStop, ",") <~ ")" ^? {
     case degrees ~ _ ~ colorStops if colorStops.length > 1 => {
@@ -189,11 +177,6 @@ class LayerParser(width: Int, height: Int) extends JavaTokenParsers {
   // zoom filter
   def zoom: Parser[ZoomNode] = "zoom(" ~> percent <~ ")" ^^ {
     case percentage => ZoomNode(percentage)
-  }
-
-  // constrain filter
-  def constrain: Parser[ConstrainNode] = "constrain(" ~> rep1sep(constraints, ",") <~ ")" ^^ {
-    case constraints => ConstrainNode(constraints)
   }
 
   // scale filter
@@ -244,11 +227,6 @@ class LayerParser(width: Int, height: Int) extends JavaTokenParsers {
     case percent => PadPercentNode(percent)
   }
 
-  // composite filter
-  def composite: Parser[CompositeNode] = "composite(" ~> source ~ "," ~ rep1sep(composites, ",") <~ ")" ^^ {
-    case source ~ _ ~ composites => CompositeNode(source, composites)
-  }
-
   // cover filter
   def cover: Parser[CoverNode] = "cover(" ~> pixels ~ "," ~ pixels <~ ")" ^^ {
     case width ~ _ ~ height => CoverNode(width, height)
@@ -256,10 +234,10 @@ class LayerParser(width: Int, height: Int) extends JavaTokenParsers {
 
   // all filters
   def filters: Parser[FilterNode] =
-    text | linear | boxblur | boxblurpercent | 
-    blur | scaleto | zoom | scale | grid |
-    round | roundpercent | mask | colorize | overlay |
-    composite | constrain | pad | padpercent
+    text | linear | boxblur | boxblurpercent |
+    blur | scaleto | zoom | scale |
+    grid | round | roundpercent | mask |
+    colorize | overlay | pad | padpercent
 
   // layer - matches a single layer
   def layer: Parser[LayerNode] =
