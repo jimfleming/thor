@@ -19,7 +19,7 @@ Querystring Params
 - `w` - width of the final image
 - `h` - height of the final image
 - `c` - compression quality to apply to jpeg image results (0-100)
-  - NOTE: File format is chosen automatically based on whether or not a filter or layer utilizes transparency.
+- `f` - file format; one of: `png` or `jpeg` (default)
 - `l` - `<layer>[; <layer>]+` - a sequence of one or more layers separated by a semi-colon: `;`
   - layer - `<source>[:<filter>]|<filter>` - a layer consists of a single image source and an optional filter separated by a colon: `:`, or a single filter without a source
     - source - `<url>|$<index>|_` - either a relative url path or a layer reference or an empty layer
