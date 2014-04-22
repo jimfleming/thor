@@ -57,7 +57,7 @@ class LayerParser(width: Int, height: Int) extends JavaTokenParsers {
   def pixels: Parser[Int] = integer <~ "px"
 
   // path - matches a valid url path
-  def path: Parser[PathNode] = """[\w\-\/\.]+""".r ^^ {
+  def path: Parser[PathNode] = """[\w\-\/\.%]+""".r ^^ {
     case path => PathNode(path)
   }
 
